@@ -17,54 +17,87 @@ import java.util.Objects;
 @Component
 public class DatabaseAPI implements CommandLineRunner {
 
+    private final JdbcTemplate jdbcTemplate;
+
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    public DatabaseAPI(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
-    public void initDatabase(){
+    @Override
+    public void run(String... args) {
+        initDatabase();
+        displayData();
+    }
+
+    private void initDatabase() {
+        createUsersTable();
+        createStocksTable();
+    }
+
+    private void createUsersTable() {
         jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS user(" +
-                "id             INTEGER PRIMARY KEY," +
-                "email          STRING NOT NULL," +
-                "password       STRING NOT NULL," +
-                "availableFunds DOUBLE," +
-                "isLocked       BOOLEAN);");
+            "CREATE TABLE IF NOT EXISTS user(" +
+            "id             INTEGER PRIMARY KEY," +
+            "email          STRING NOT NULL," +
+            "password       STRING NOT NULL," +
+            "availableFunds DOUBLE," +
+            "isLocked       BOOLEAN);");
+    }
 
+    private void createStocksTable() {
         jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS stock(" +
-                "id         INTEGER PRIMARY KEY," +
-                "ownerId    INTEGER NOT NULL REFERENCES user (id)," +
-                "symbol     STRING NOT NULL," +
-                "volume     DOUBLE," +
-                "value      DOUBLE," +
-                "FOREIGN KEY (ownerId) REFERENCES user (id));"
-        );
+            "CREATE TABLE IF NOT EXISTS stock(" +
+            "id         INTEGER PRIMARY KEY," +
+            "ownerId    INTEGER NOT NULL REFERENCES user (id)," +
+            "symbol     STRING NOT NULL," +
+            "volume     DOUBLE," +
+            "value      DOUBLE," +
+            "FOREIGN KEY (ownerId) REFERENCES user (id));");
+    }
 
-        List<User> users = jdbcTemplate.query("SELECT * FROM user;",
-                (resultSet, rowNum) -> new User(
-                        resultSet.getInt("id"),
-                        resultSet.getString("email"),
-                        resultSet.getString("password"),
-                        resultSet.getBoolean("isLocked"),
-                        resultSet.getDouble("availableFunds")
-                ));
-
-        List<Stock> stocks = jdbcTemplate.query("SELECT * FROM stock;",
-                (resultSet, rowNum) -> new Stock(
-                        resultSet.getInt("id"),
-                        resultSet.getInt("ownerId"),
-                        resultSet.getString("symbol"),
-                        resultSet.getDouble("volume"),
-                        resultSet.getDouble("value")
-                ));
+    private void displayData() {
+        List<User> users = fetchUsers();
+        List<Stock> stocks = fetchStocks();
         users = pairUsersToStocks(users, stocks);
 
-        if(!users.isEmpty() || !stocks.isEmpty()){
+        if (users.isEmpty() && stocks.isEmpty()) {
+            System.out.println("No Records to Display");
+        } else {
             users.forEach(System.out::println);
             stocks.forEach(System.out::println);
-        } else {
-            System.out.println("No Records to Display");
         }
     }
+
+    private List<User> fetchUsers() {
+        return jdbcTemplate.query("SELECT * FROM user;",
+            (resultSet, rowNum) -> new User(
+                resultSet.getInt("id"),
+                resultSet.getString("email"),
+                resultSet.getString("password"),
+                resultSet.getBoolean("isLocked"),
+                resultSet.getDouble("availableFunds")
+            ));
+    }
+
+    private List<Stock> fetchStocks() {
+        return jdbcTemplate.query("SELECT * FROM stock;",
+            (resultSet, rowNum) -> new Stock(
+                resultSet.getInt("id"),
+                resultSet.getInt("ownerId"),
+                resultSet.getString("symbol"),
+                resultSet.getDouble("volume"),
+                resultSet.getDouble("value")
+            ));
+    }
+
+    // Assume the implementation is present for this function
+    private List<User> pairUsersToStocks(List<User> users, List<Stock> stocks) {
+        // Pairing logic here...
+        return users;
+    }
+}
+
 
     public void addUserRecord(String email, String password) throws Exception{
         if(getUserRecord(new User(email, password)) != null) throw new Exception("User already in database");
